@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include 'alerts.html' %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            {% if auction.item.image %}
+            <img src="{{ auction.item.image.url }}" class="img-fluid mb-3" alt="{{ auction.item.name }}">
+            {% endif %}
+            <h2 class="text-center">{{ auction.item_name }}</h2>
+            <p><strong>Description:</strong> {{ auction.item.description }}</p>
+            <p><strong>Starting Price:</strong> ${{ auction.start_price }}</p>
+            <p><strong>Starting Time:</strong> {{ auction.starting_time }}</p>
+            <p><strong>End At:</strong> {{ auction.end_time }}</p>
+            <p><strong>Current Bid:</strong> <span id="current-bid">${{ auction.current_bid }} by {{ bid.user.first_name }}</span></p>
+            {% if auction.end_time <= now or now <= auction.starting_time %}
+                {% if bid.user == request.user %}
+                    <div class="d-flex justify-content-center">
+                        <form method="POST" action="{% url 'payment:Auction_session' auction_id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary">Make Payment</button>
+                        </form>
+                    </div>
+                {% elif now <= auction.starting_time %}
+                    <div class="d-flex justify-content-center">
+                        <h3> Auction has not started yet: </h3>
+                        <form method="POST" action="{% url 'index' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary">Return Home</button>
+                        </form>
+                    </div>
+                {%else%}
+                <div class="d-flex justify-content-center">
+                    <h3> Auction has Ended: </h3>
+                    <form method="POST" action="{% url 'index' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Return Home</button>
+                    </form>
+                </div>
+                {% endif %}
+            {% elif auction.user == request.user %}
+                <div class="d-flex justify-content-center">
+                    <form method="POST" action="{% url 'index' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Return Home</button>
+                    </form>
+                </div>
+            {% elif user.is_authenticated %}
+                <div class="d-flex justify-content-center">
+                    <form id="bid-form" method="POST" class="text-center">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="bid_amount">Enter Your Bid:</label>
+                            <input type="number" class="form-control" id="bid_amount" name="bid_amount" min="{{ auction.current_bid }}" step="0.01" required>
+                            <button type="submit" class="btn btn-primary mt-2">Place Bid</button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                <div class="d-flex justify-content-center">
+                    <form method="POST" action="{% url 'index' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Return Home</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <div class="mb-2">
+                <textarea id="chat-log" rows="20" class="form-control mb-3" readonly>
+                    {% for message in chat_messages %}
+                    {{ message.user.first_name }} : {{ message.message }}
+                    {% endfor %}
+                </textarea>
+            </div>
+            <div class="input-group">
+                <input id="chat-message-input" type="text" class="form-control">
+                <button id="chat-message-submit" class="btn btn-secondary">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ auction.pk|json_script:"auctionId" }}
+{{ request.user.first_name|json_script:"request-user" }}
+
+<script>
+const auctionId = JSON.parse(document.getElementById('auctionId').textContent);
+const requestUser = JSON.parse(document.getElementById('request-user').textContent);
+const chatSocket = new WebSocket(`ws://${window.location.host}/ws/auctions/${auctionId}/auction_bid/`);
+
+// Handle incoming WebSocket messages
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log("Received WebSocket message:", data);  // Debug statement
+    if (data.type === 'bid') {
+        handleBidUpdate(data);
+    } else if (data.type === 'chat.message') {
+        handleChatMessage(data);
+    }
+};
+
+// Handle bid updates
+function handleBidUpdate(data) {
+    console.log("Handling bid update:", data);  // Debug statement
+    const currentBidElement = document.querySelector('#current-bid');
+    currentBidElement.textContent = `$${data.new_bid} by ${data.user}`;
+    const bidAmountInput = document.querySelector('#bid_amount');
+    bidAmountInput.min = data.new_bid;
+    if (data.message === 'The auction is over') {
+        bidAmountInput.setAttribute('disabled', true);
+        document.getElementById('bid-form').style.display = 'none';
+    } else {
+        currentBidElement.textContent = `$${data.new_bid} by ${data.user}`;
+        bidAmountInput.min = data.new_bid;
+    }
+    // Show real-time message
+    showMessage(`${data.user} placed a bid of $${data.new_bid}`, 'info');
+}
+
+// Handle chat messages
+function handleChatMessage(data) {
+    const chatLog = document.querySelector('#chat-log');
+    const isMe = data.user === requestUser;
+    const nameDisplay = isMe ? 'me' : data.user;
+    chatLog.value += `${nameDisplay}: ${data.message}\n`;
+    // Show real-time message
+    showMessage(`${nameDisplay}: ${data.message}`, 'info');
+}
+
+// Send chat message
+document.querySelector('#chat-message-submit').onclick = function() {
+    const messageInputDom = document.querySelector('#chat-message-input');
+    const message = messageInputDom.value;
+    chatSocket.send(JSON.stringify({ 'type': 'chat.message', 'message': message, 'user': requestUser }));
+    messageInputDom.value = '';
+};
+
+// Bid form submission
+document.getElementById('bid-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const bidAmountInput = document.getElementById('bid_amount');
+    const bidAmount = bidAmountInput.value;
+    chatSocket.send(JSON.stringify({ 'type': 'bid', 'bid_amount': bidAmount, 'user': requestUser }));
+    bidAmountInput.value = '';
+});
+
+// Function to show real-time messages
+function showMessage(message, tag) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-${tag} alert-dismissible fade show';
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        ${message}
+    `;
+    document.body.appendChild(alertDiv);  // You can append it to a specific container instead
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        alertDiv.classList.add('hide');
+        alertDiv.addEventListener('transitionend', () => alertDiv.remove());
+    }, 10000);  // Adjust the timeout as needed
+}
+</script>
+
+{% endblock %}

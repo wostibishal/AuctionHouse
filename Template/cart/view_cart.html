@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include 'alerts.html' %}
+<header class="bg-dark py-5">
+    <div class="container px-4 px-lg-5 my-5">
+        <div class="text-center text-white">
+            <h1 class="display-4 fw-bolder">Shopping Cart</h1>
+            <p class="lead fw-normal text-white-50 mb-0">View your cart...</p>
+        </div>
+    </div>
+</header>
+
+<div class="container my-5">
+    {% if cart_items %}
+        {% for item in cart_items %}
+            <div class="card mb-3">
+                <div class="row g-0">
+                    <div class="col-md-4">
+                        {% if item.item.image %}
+                            <img src="{{ item.item.image.url }}" class="img-fluid rounded-start" alt="{{ item.item.name }}">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ item.item.name }}</h5>
+                            <p class="card-text">{{ item.item.description }}</p>
+                            <p class="card-text"><small class="text-muted">Price: ${{ item.item.price }}</small></p>
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <label for="select{{ item.id }}" class="col-form-label">Quantity:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select" id="select{{ item.id }}">
+                                        {% for i in 1..item.item.stock %}
+                                            <option value="{{ i }}" {% if i == item.quantity %}selected{% endif %}>{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <a href="{% url 'cart:remove_from_cart' item.id %}" class="btn btn-danger btn-sm">Remove</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        <a href="{% url 'order:save_orders' %}" class="btn btn-primary">checkout</a>
+{% else %}
+<div class="alert alert-warning" role="alert">
+    Your cart is empty.
+</div>
+{% endif %}
+</div>
+{% endblock %}

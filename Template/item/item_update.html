@@ -1,0 +1,23 @@
+{% extends 'index.html' %} <!-- Replace 'base.html' with your actual base template -->
+
+{% block content %}
+{% include 'alerts.html' %}
+<div class="container mt-5 mb-5">
+<div class="row justify-content-center">
+    <div class="col-md-6">
+    <div class="card">
+        <div class="card-header">
+        <h2 class="text-center"> Update product</h2>
+        </div>
+        <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" value="submit">Update</button>
+        </form>
+        </div>
+    </div>
+    </div>
+</div>
+</div>
+{% endblock %}

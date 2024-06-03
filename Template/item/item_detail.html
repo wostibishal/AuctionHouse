@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load static %}  <!-- If needed for loading static files -->
+
+{% block title %}{{ item.name }}{% endblock %}
+
+<style>
+    .rating {
+        display: inline-block;
+        position: relative;
+        height: 50px;
+        line-height: 50px;
+        font-size: 50px;
+    }
+    .rating label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        cursor: pointer;
+    }
+    .rating label:last-child {
+        position: static;
+    }
+    .rating label:nth-child(1) {
+        z-index: 5;
+    }
+    .rating label:nth-child(2) {
+        z-index: 4;
+    }
+    .rating label:nth-child(3) {
+        z-index: 3;
+    }
+    .rating label:nth-child(4) {
+        z-index: 2;
+    }
+    .rating label:nth-child(5) {
+        z-index: 1;
+    }
+    .rating label input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0;
+    }
+    .rating label .icon {
+        float: left;
+        color: transparent;
+    }
+    .rating label:last-child .icon {
+        color: #000;
+    }
+    .rating:not(:hover) label input:checked ~ .icon,
+    .rating:hover label:hover input ~ .icon {
+        color: #FFD700;
+    }
+</style>
+
+{% block content %}
+{% include 'alerts.html' %}
+
+<div class="container mt-5">
+  <div class="row">
+      <div class="col-md-8 position-relative">
+          <img src="{{ item.image.url }}" alt="{{ item.name }}" class="img-fluid rounded">
+          {% if user.role == 1 or user.role == 0 %}
+          
+          <button type="button" class="btn-close position-absolute top-0 end-0 m-2" aria-label="Close" data-bs-toggle="modal" data-bs-target="#deleteConfirmationModal"></button>
+          
+          {% endif %}
+      </div>
+      <div class="col-md-4 bg-light p-4 rounded">
+          <h1>{{ item.name }}</h1>
+          <p class="text-muted"><strong>Price:</strong> {{ item.price }}</p>
+          <p class="text-muted"><strong>Seller:</strong> {{ item.market_name }}</p>
+          {% if item.description %}
+          <p><strong>Description:</strong><br>{{ item.description }}</p>
+          {% endif %}
+          {% if user.is_authenticated %}
+          <a href="{% url 'item:item_update' item.pk %}" class="btn btn-secondary">Update</a>
+          {% endif %}
+          {% if user.role == 2 %}
+          <form action="{% url 'cart:add_to_cart' item.pk %}" method="post">
+              {% csrf_token %}
+              <button class="btn btn-primary" type="submit">Add to Cart</button>
+          </form>
+          {% endif %}
+      </div>
+  </div>
+
+  <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h5 class="modal-title" id="modalLabel">Confirm Delete</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                  Are you sure you want to delete this item?
+              </div>
+              <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <form method="post" action="{% url 'item:item_delete' item.pk %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger">Delete</button>
+                  </form>
+              </div>
+          </div>
+      </div>
+  </div>
+  {% if order %}
+  <div class="container mt-5">
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3 class="mb-4">Reviews</h3>
+            <div class="list-group">
+                {% for review in reviews %}
+                <div class="list-group-item list-group-item-action flex-column align-items-start">
+                    <div class="d-flex w-100 justify-content-between mb-2">
+                        <h5 class="mb-1">User: {{ review.user.first_name }} {{ review.user.last_name }}</h5>
+                        <small class="text-muted">Rating: {{ review.rating }} stars</small>
+                    </div>
+                    <p>{{ review.comment }}</p>
+                </div>
+                {% empty %}
+                <div class="list-group-item">
+                    No reviews yet.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    {% if order.user == request.user %}    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h3 class="mb-4">Add a Review</h3>
+            <form method="post" action="{% url 'item:item_detail' item.pk %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">{{ form.rating.label }}</label>
+                    <div class="rating">
+                        <label>
+                            <input type="radio" name="rating" value="5" />
+                            <span class="icon">5★</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="4" />
+                            <span class="icon">4★</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="3" />
+                            <span class="icon">3★</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="2" />
+                            <span class="icon">2★</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="1" />
+                            <span class="icon">1★</span>
+                        </label>
+                    </div>
+                    {% if form.rating.errors %}
+                        <div class="alert alert-danger">{{ form.rating.errors.as_text }}</div>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="id_comment" class="form-label">{{ form.comment.label }}</label>
+                    {{ form.comment }}
+                    {% if form.comment.errors %}
+                        <div class="alert alert-danger">{{ form.comment.errors.as_text }}</div>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Review</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}    
+</div>
+{% else %}
+
+{% endif %}
+<hr>
+<h2 class="text-center mb-4" id="Products">Recommended Products</h2>
+<hr>
+<div class="row row-cols-1 row-cols-md-3 g-4">  <!-- Using grid system for responsiveness and spacing -->
+    {% for related_item in related_items %}
+    <div class="col">
+        <div class="card h-100 shadow-sm">  <!-- Added shadow for better depth and full height for equal card height -->
+            <img src="{{ related_item.image.url }}" class="card-img-top" alt="{{ related_item.name }}" style="height: 200px; object-fit: cover;">  <!-- Controlled height and object-fit for better image handling -->
+            <div class="card-body d-flex flex-column">  <!-- Flex column for content alignment -->
+                <h5 class="card-title">{{ related_item.name }}</h5>
+                <p class="card-text">{{ related_item.description|truncatewords:20 }}</p>  <!-- Optional: Showing part of the description if it exists -->
+                <div class="mt-auto">  <!-- Pushes the button to the bottom of the card -->
+                    <a href="{% url 'item:item_detail' related_item.id %}" class="btn btn-primary w-100">Details</a>  <!-- Full-width button -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+</div>
+{% endblock %}

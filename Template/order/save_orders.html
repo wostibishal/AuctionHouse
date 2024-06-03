@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+{% include 'alerts.html' %}
+<div class="container my-5">
+    <h2>order summery</h2>
+    <form method="POST" action="{% url 'payment:checkout_session' order.id %}">
+        {% csrf_token %}
+            <div class="row space-inbetween flex">
+                {% for item in order_items_list %}
+                    <h1>Product List</h1>
+                    <div class="product-card">
+                    <div class="product-image">
+                    <img src="{{ item.item.image.url }}" alt="{{ item.item.name }}">
+                    </div>
+                    <div  id="nm{{item.item.id}}" class="product-name">{{ item.item.name }}</div>
+                    <div class="product-description">{{ item.item.description }}</div>
+                    <div class="product-price">$ {{ item.item.price }}</div>
+                    </div>
+                {% endfor %}
+            </div> 
+        <button type="submit" class="btn btn-primary">Place Order</button>
+    </form>
+</div>
+{% endblock %}

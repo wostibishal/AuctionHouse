@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+{% include 'alerts.html' %}
+<div class="container mt-3">
+    <h1 class="mb-4">Auction List</h1>
+    {% if auction %}
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for auc in auction %}
+            <div class="col">
+                <div class="card h-100">
+                    <img src="{% if auc.item.image %}{{ auc.item.image.url }}{% else %}{% static 'images/default.jpg' %}{% endif %}" class="card-img-top" alt="{{ auc.title }}" style="height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ auc.title }}</h5>
+                        <p class="card-text"><small class="text-muted">{{ auc.starting_time }} to {{ auc.end_time }}</small></p>
+                        <p class="card-text">Starting at ${{ auc.start_price }}</p>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="{% url 'auctions:auction_bid' auc.pk %}" class="btn btn-primary">Go to Auction</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            No auctions found.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
